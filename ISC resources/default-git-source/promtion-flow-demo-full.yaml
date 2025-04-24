@@ -1,0 +1,22 @@
+apiVersion: codefresh.io/v1beta1
+kind: PromotionFlow
+metadata:
+  name: demo-promotion-full
+  annotations:
+    description: >-
+      Example Promotion Flow to deploy sequentially across dev, test, and
+      production
+    version: "1.0"
+spec:
+  triggerEnvironment: demo-dev
+  steps:
+    - environment: demo-test
+      dependsOn:
+        - demo-dev
+      policy:
+        action: commit
+    - environment: demo-production
+      dependsOn:
+        - demo-test
+      policy:
+        action: pr

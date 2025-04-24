@@ -1,0 +1,16 @@
+apiVersion: codefresh.io/v1beta1
+kind: PromotionFlow
+metadata:
+  name: demo-promotion-hotfix
+  annotations:
+    description: >-
+      Example Promotion Flow to deploy hotfix from dev to production
+    version: "1.0"
+spec:
+  triggerEnvironment: demo-dev
+  steps:
+    - environment: demo-production
+      dependsOn:
+        - demo-dev
+      policy:
+        action: pr

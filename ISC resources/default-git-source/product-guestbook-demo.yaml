@@ -1,0 +1,27 @@
+apiVersion: codefresh.io/v1beta2
+kind: Product
+metadata:
+  name: guestbook-demo
+spec:
+  promotionFlows:
+    - name: demo-promotion-full
+      gitTriggerSelectors:
+        - key: commitMessage
+          operator: In
+          values:
+            - '[promotion-full]'
+    - name: demo-hotfix
+      gitTriggerSelectors:
+        - key: commitMessage
+          operator: In
+          values:
+            - '[promotion-promotion-hotfix]'
+  promotionTemplate:
+    versionSource:
+      file: Chart.yaml
+      jsonPath: $.appVersion
+    promotion:
+      values.yaml:
+        jsonPaths:
+          - $.image
+  concurrency: queue
