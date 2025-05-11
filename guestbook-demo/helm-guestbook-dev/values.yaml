@@ -1,12 +1,12 @@
 # Default values for helm-guestbook.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
-
+version: &imageTag "0.2"
 replicaCount: 3
 
 image:
   repository: gcr.io/heptio-images/ks-guestbook-demo
-  tag: 0.2
+  tag: *imageTag
   pullPolicy: IfNotPresent
 
 service:
