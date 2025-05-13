@@ -1,0 +1,55 @@
+# DO NOT REMOVE the following attributes:
+# annotations.codefresh.io/workflow-origin (identifies type of Workflow Template as Promotion Workflow)
+# annotations.version (identifies version of Promotion Workflow used)
+# annotations.description (identifies intended use of the Promotion Workflow)
+
+# Documentation:
+# This WorkflowTemplate is a helper template designed to generate and store a promotion context.
+# It should be used by other workflow templates to store values in the promotion-context, which can later
+# be accessed by hooks and pre-post action promotion workflows.
+# 
+# Example usage:
+# Refer to the following link for an example of how to use the `set-promotion-context` template:
+# <link>
+#
+# Key Features:
+# - Accepts a JSON string of key-value pairs as input (`context-params`).
+# - Stores the JSON string in a file (`/tmp/promotion-context.txt`) for later use.
+# - Workflow Templates trigged by a Promotion Hook can access the stored key value pairs as parameters that can be accessed globally.
+#
+# Notes:
+# - Ensure that the `context-params` input parameter is provided in the correct JSON format.
+# - This template is intended to be used as part of a larger promotion workflow.
+
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: set-promotion-context
+  annotations:
+    version: 0.0.1
+    codefresh.io/workflow-origin: promotion
+spec:
+  entrypoint: generate-context
+  templates:
+    - name: generate-context
+      serviceAccountName: cf-default-promotion-workflows-sa
+      inputs:
+        parameters:
+          - name: context-params
+            description: JSON string of key-value pairs
+            # Example: '{"JIRA_ISSUE_SOURCE_FIELD": "ABC-123", "JIRA_BASE_URL": "https://jira.example.com"}'
+      script:
+        image: alpine
+        command: [sh]
+        source: |
+          echo '{{inputs.parameters.context-params}}' > /tmp/context.json
+          CONTEXT_JSON=$(cat /tmp/context.json)
+
+          # Output the context as is
+          echo "$CONTEXT_JSON" > /tmp/promotion-context.txt
+      outputs:
+        parameters:
+          - name: PROMOTION_CONTEXT
+            globalName: PROMOTION_CONTEXT
+            valueFrom:
+              path: /tmp/promotion-context.txt
