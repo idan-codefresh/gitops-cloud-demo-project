@@ -1,0 +1,62 @@
+# DO NOT REMOVE the following attributes:
+# annotations.codefresh.io/workflow-origin (identifies type of Workflow Template as Promotion Workflow)
+# annotations.version (identifies version of Promotion Workflow used)
+# annotations.description (identifies intended use of the Promotion Workflow)
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: hook-on-fail
+  annotations:
+    codefresh.io/workflow-origin: promotion
+    version: 0.0.1
+spec:
+  arguments:
+      # List of parameters avilable for Release onFail and Environment onFail Hooks. See full list of parameters in the documentation. <link>
+    parameters:
+      - name: RELEASE_URL
+      - name: PRODUCT_NAME
+      - name: COMMIT_SHA
+      - name: PROMOTION_FLOW_NAME
+      - name: RELEASE_ID
+      - name: FAILED_ENVIRONMENTS
+        value: '[]'
+      - name: ERROR_MESSAGE  
+  serviceAccountName: cf-default-promotion-workflows-sa
+  entrypoint: send-message
+  templates:
+    - name: send-message
+      retryStrategy:
+        limit: "1"
+        retryPolicy: "Always"
+        backoff:
+          duration: "5s"
+      inputs:
+        parameters:
+          - name: MODE
+            value: "simple"
+          - name: SLACK_HOOK_URL
+            value: https://hooks.slack.com/services/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
+          - name: SLACK_TEXT
+            value: |
+              🚨 *Promotion Failed!* 🚨  
+              *Product:* {{workflow.parameters.PRODUCT_NAME}}  
+              *Trigger Commit Sha:* {{workflow.parameters.COMMIT_SHA}}  
+              *Promotion Flow:* {{workflow.parameters.PROMOTION_FLOW_NAME}}  
+              *Release:* <{{workflow.parameters.RELEASE_URL}}|View Release>  
+              *Release ID:* {{workflow.parameters.RELEASE_ID}}  
+              *Failed Environments:* {{workflow.parameters.FAILED_ENVIRONMENTS}}
+              *Error Message:* {{workflow.parameters.ERROR_MESSAGE}}
+      container:
+        name: main
+        imagePullPolicy: Always
+        image: quay.io/codefreshplugins/argo-hub-slack-send-message:0.0.2-main
+        command:
+          - node
+          - /usr/src/app/index.js
+        env:
+          - name: MODE
+            value: '{{ inputs.parameters.MODE }}'
+          - name: SLACK_HOOK_URL
+            value: '{{ inputs.parameters.SLACK_HOOK_URL }}'
+          - name: SLACK_TEXT
+            value: '{{ inputs.parameters.SLACK_TEXT }}'

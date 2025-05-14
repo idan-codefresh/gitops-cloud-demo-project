@@ -1,0 +1,109 @@
+# DO NOT REMOVE the following attributes:
+# annotations.codefresh.io/workflow-origin (identifies type of Workflow Template as Promotion Workflow)
+# annotations.version (identifies version of Promotion Workflow used)
+# annotations.description (identifies intended use of the Promotion Workflow)
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: jira-open-bug
+  annotations:
+    codefresh.io/workflow-origin: promotion
+    version: 0.0.1
+
+spec:
+  serviceAccountName: cf-default-promotion-workflows-sa
+  entrypoint: main-dag
+  templates:
+    - name: main-dag
+      dag:
+        tasks:
+          - name: create-issue
+            template: create-issue
+          - name: set-promotion-context
+            templateRef:
+             # Make sure to add this workflow template through the examples section in the UI—this will let you use it.
+              name: set-promotion-context
+              template: generate-context
+            depends: "create-issue.Succeeded"
+            arguments:
+              parameters:
+                - name: context-params
+                  value: |
+                    {
+                      "JIRA_ISSUE_SOURCE_FIELD": "{{tasks.create-issue.outputs.parameters.JIRA_ISSUE_SOURCE_FIELD}}",
+                      "JIRA_ISSUE_URL": "https://testjira273.atlassian.net"
+                    }
+
+    - name: create-issue
+      serviceAccountName: cf-default-promotion-workflows-sa
+      retryStrategy:
+        limit: "3"
+        retryPolicy: "Always"
+        backoff:
+          duration: "5s"
+      inputs:
+        parameters:
+          - name: SLACK_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: promotions-secrets
+                key: slack-token
+          - name: JIRA_ISSUE_URL
+            value: https://testjira273.atlassian.net
+          - name: JIRA_USERNAME
+            value: testjira273@gmail.com
+          - name: JIRA_API_KEY_SECRET_KEY
+            default: 'api-key'
+          - name: JIRA_USERNAME_SECRET_KEY
+            default: 'username'
+          - name: ISSUE_PROJECT
+            default: 'TEST'
+          - name: ISSUE_SUMMARY
+            default: 'migration for product release failed'
+          - name: ISSUE_DESCRIPTION
+            default: 'fix migration and current db state'
+          - name: ISSUE_COMPONENTS
+            default: ''
+          - name: ISSUE_CUSTOMFIELDS
+            default: ''
+          - name: ISSUE_TYPE
+            default: 'Task'
+      outputs:
+        parameters:
+          - name: JIRA_ISSUE_SOURCE_FIELD
+            valueFrom:
+              path: /tmp/JIRA_ISSUE_SOURCE_FIELD
+      container:
+        name: main
+        imagePullPolicy: Always
+        image: quay.io/codefreshplugins/argo-hub-workflows-jira-versions-0.0.1-images-jira-manager:main
+        command:
+          - python
+          - /jira/jira_issue_manager.py
+        env:
+          - name: JIRA_BASE_URL
+            value: ''
+          - name: JIRA_USERNAME
+            value: ''
+          - name: JIRA_API_KEY???
+            value: ''
+          - name: ACTION
+            value: 'issue_create'
+          - name: ISSUE_PROJECT
+            value: ''
+          - name: ISSUE_SUMMARY
+            value: ''
+          - name: ISSUE_DESCRIPTION
+            value: ''
+          - name: ISSUE_COMPONENTS
+            value: ''
+          - name: ISSUE_CUSTOMFIELDS
+            value: ''
+          - name: ISSUE_TYPE
+            value: ''
+        volumeMounts:
+          - name: promotion-context
+            mountPath: /tmp
+      volumes:
+        - name: promotion-context
+          emptyDir: {}

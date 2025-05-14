@@ -1,0 +1,52 @@
+# DO NOT REMOVE the following attributes:
+# annotations.codefresh.io/workflow-origin (identifies type of Workflow Template as Promotion Workflow)
+# annotations.version (identifies version of Promotion Workflow used)
+# annotations.description (identifies intended use of the Promotion Workflow)
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: hook-on-start
+  annotations:
+    codefresh.io/workflow-origin: promotion
+    version: 0.0.1
+spec:
+  arguments:
+    parameters:
+    # List of parameters avilable for Release OnStart and Environment OnStart Hooks. See full list of parameters in the documentation. <link>
+      - name: RELEASE_URL
+      - name: PRODUCT_NAME
+      - name: COMMIT_SHA
+      - name: PROMOTION_FLOW_NAME
+      - name: RELEASE_ID
+  serviceAccountName: cf-default-promotion-workflows-sa
+  entrypoint: send-message
+  templates:
+    # Send-message template
+    - name: send-message
+      retryStrategy:
+        limit: "1"
+        retryPolicy: "Always"
+        backoff:
+          duration: "5s"
+      inputs:
+        parameters:
+          - name: MODE
+            value: "simple"
+          - name: SLACK_HOOK_URL
+            value: <put here your webhook url>
+          - name: SLACK_TEXT
+            value: Successfully started a release flow {{workflow.parameters.RELEASE_URL}}!  
+      container:
+        name: main
+        imagePullPolicy: Always
+        image: quay.io/codefreshplugins/argo-hub-slack-send-message:0.0.2-main
+        command:
+          - node
+          - /usr/src/app/index.js
+        env:
+          - name: MODE
+            value: '{{ inputs.parameters.MODE }}'
+          - name: SLACK_HOOK_URL
+            value: '{{ inputs.parameters.SLACK_HOOK_URL }}'
+          - name: SLACK_TEXT
+            value: '{{ inputs.parameters.SLACK_TEXT }}'
